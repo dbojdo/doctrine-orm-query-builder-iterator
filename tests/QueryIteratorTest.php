@@ -4,11 +4,11 @@ namespace Webit\DoctrineORM\QueryBuilder\Iterator;
 
 use Webit\DoctrineORM\QueryBuilder\Iterator\Entity\TestEntity;
 
-class QueryBuilderIteratorTest extends AbstractTestCase
+class QueryIteratorTest extends AbstractTestCase
 {
     protected function createIterator(): \Iterator
     {
-        return new QueryBuilderIterator(
+        return new QueryIterator(
             $this->entityManager
                 ->createQueryBuilder()
                 ->select('t')
