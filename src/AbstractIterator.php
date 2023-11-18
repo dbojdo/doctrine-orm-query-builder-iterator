@@ -86,18 +86,29 @@ abstract class AbstractIterator implements \Iterator
 
     protected function resolveClearEntities(): array
     {
-        return array_unique(
-            array_merge(
-                array_map(
-                    fn (Join $join) => $join->getJoin(),
-                    $this->queryBuilder->getDQLPart('join'),
-                ),
-                array_map(
-                    fn (From $from) => $from->getFrom(),
-                    $this->queryBuilder->getDQLPart('from')
-                )
-            )
-        );
+        $entities = [];
+        foreach ($this->queryBuilder->getDQLPart('from') as $from) {
+            $entities[$from->getAlias()] = $from->getFrom();
+        }
+
+        $em = $this->queryBuilder->getEntityManager();
+        foreach ($this->queryBuilder->getDQLPart('join') as $f => $joins) {
+            /** @var Join $join */
+            foreach ($joins as $join) {
+                @list ($fromEntity, $field) = explode('.', $join->getJoin(), 2);
+                if (!isset($entities[$fromEntity])) {
+                    throw new \RuntimeException(
+                        sprintf('Unknown entity for alias \'%s\'. You may want to change the join order in your query.', $fromEntity)
+                    );
+                }
+
+                $meta = $em->getClassMetadata($entities[$fromEntity]);
+                $assoc = $meta->getAssociationMapping($field);
+                $entities[$join->getAlias()] = $assoc['targetEntity'];
+            }
+        }
+
+        return array_unique(array_values($entities));
     }
 
     private function nextBatch(bool $forceLoad = false): void
