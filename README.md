@@ -25,7 +25,7 @@ $queryBuilder->orderBy('a.ble', 'DESC');
 $iterator = new QueryIterator(
     $queryBuilder,
     20, // iterates in 50 elements batches (50 by default)
-    ['MyEntity'], // clears entity manager before getting next batch (by default clears all involved in the query) 
+    ['MyEntity'], // clears entity manager before getting next batch (by default clears the whole entity manager) 
 );
 
 foreach ($iterator as $entity) {
@@ -52,7 +52,7 @@ $iterator = new IdsIterator(
     $queryBuilder,
     'a.id', // the ID field
     20, // iterates in 20 elements batches (50 by default)
-    ['MyEntity'], // clears entity manager before getting next batch (by default clears all involved in the query) 
+    ['MyEntity'], // clears entity manager before getting next batch (by default clears the whole entity manager) 
 );
 
 foreach ($iterator as $entity) {

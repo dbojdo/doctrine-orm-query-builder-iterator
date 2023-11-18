@@ -2,30 +2,27 @@
 
 namespace Webit\DoctrineORM\QueryBuilder\Iterator;
 
-use Doctrine\ORM\Query\Expr\From;
-use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 
 abstract class AbstractIterator implements \Iterator
 {
     public const DEFAULT_BATCH_SIZE = 50;
 
-    private readonly array $clearEntities;
-
     /** @var object[]|null */
     private ?array $currentBatch;
-
     private int $currentBatchPosition = 0;
-
     private int $totalPosition = 0;
 
+    /**
+     * @param QueryBuilder $queryBuilder the query builder to be iterated over
+     * @param int $batchSize the batch size (number of entities per query)
+     * @param array|null $clearEntities the entities to be cleared. null: the whole entity manager, array of entities: only listed entities, empty array: no clearance
+     */
     public function __construct(
         protected readonly QueryBuilder $queryBuilder,
         protected readonly int $batchSize = self::DEFAULT_BATCH_SIZE,
-        array $clearEntities = null
-    ) {
-        $this->clearEntities = $clearEntities ?? $this->resolveClearEntities();
-    }
+        private readonly ?array $clearEntities = null,
+    ) {}
 
 
     public function current(): ?object
@@ -79,36 +76,14 @@ abstract class AbstractIterator implements \Iterator
     protected function clearEntityManager(): void
     {
         $em = $this->queryBuilder->getEntityManager();
+        if ($this->clearEntities === null) {
+            $em->clear();
+            return;
+        }
+
         foreach ($this->clearEntities as $entity) {
             $em->clear($entity);
         }
-    }
-
-    protected function resolveClearEntities(): array
-    {
-        $entities = [];
-        foreach ($this->queryBuilder->getDQLPart('from') as $from) {
-            $entities[$from->getAlias()] = $from->getFrom();
-        }
-
-        $em = $this->queryBuilder->getEntityManager();
-        foreach ($this->queryBuilder->getDQLPart('join') as $f => $joins) {
-            /** @var Join $join */
-            foreach ($joins as $join) {
-                @list ($fromEntity, $field) = explode('.', $join->getJoin(), 2);
-                if (!isset($entities[$fromEntity])) {
-                    throw new \RuntimeException(
-                        sprintf('Unknown entity for alias \'%s\'. You may want to change the join order in your query.', $fromEntity)
-                    );
-                }
-
-                $meta = $em->getClassMetadata($entities[$fromEntity]);
-                $assoc = $meta->getAssociationMapping($field);
-                $entities[$join->getAlias()] = $assoc['targetEntity'];
-            }
-        }
-
-        return array_unique(array_values($entities));
     }
 
     private function nextBatch(bool $forceLoad = false): void
